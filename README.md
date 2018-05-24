@@ -1,5 +1,3 @@
-**MASTER WILL NOT WORK PAST PERIOD 321 DUE TO BUG IN WEB3.JS ([issue](https://github.com/ethereum/web3.js/issues/1610)), THIS ISSUE IS BEING ADDRESSED IN ALPHA TESTING OF OPTIMIZATIONS BRANCH AND WILL BE MERGED IN AFTER TESTING** 
-
 # EOS Snapshot Generator
 
 This tool was created to aggregate the EOS ERC20 token distribution in it's entirety, acknowledge various scenarios, run validation on data and provide files representing balances in various states. 
@@ -11,6 +9,7 @@ This tool can be used to generate snapshots for **any period** in a **determinis
 - [Troubleshooting](#troubleshooting)
 - [Common Usage](#comnmon-usage)
 - [Configuration Options](#configuration-options)
+- [FAQ](#faq)
 - [How it works](#how-it-works)
 - [Glossary](#glossary)
 
@@ -57,7 +56,7 @@ MySQL stores all the intricate details of the distribution and the contract. The
 
 **The instructions below are for IPC because it's the recommended connection method. HTTP/WS has issues with multi-threading, and so you will be limited to a single thread for public key sync.**
 
-#### 4. Parity
+#### Parity
 
 On most linux systems, the default IPC defined in config.default.js should work for most linux platforms. 
 
@@ -147,7 +146,7 @@ There are three methods for configuration
 - `mysql_host`
 - `mysql_port`
 
-**All of the above options can be set either in your config.js or as startup parameters, simply prepend the option with `--` so for example `poll` or `period=111`. Startup parameters will override config.js parameters.**
+**All of the above options can be set either in your config.js or as startup parameters, simply prepend the option with `--` so for example `--poll` or `--period=111`. Startup parameters will override config.js parameters.**
 
 ## Developer Parameters
 _Misuse of these parameters without understanding the implications can result in inaccurate snapshot and/or result in error_
@@ -159,17 +158,23 @@ _Misuse of these parameters without understanding the implications can result in
 
 ## FAQ
 
+### Why does syncing the Ethereum Node take so long?
+Because you need to sync the entire blockchain.
+
+### Why is a database necessary?
+Because this distribution requires an ETL mechanism in order to determinstically aggregate the distribution. 
+
 ### What happens to tokens left unclaimed in contract?
 Unclaimed tokens are attributed to the contributing address. 
 
 ### What if an address sent EOS ERC20 tokens to EOSCrowdsale or EOSToken contract?
-Those tokens are assigned to the sending address.
+Tokens accidentally sent to one of the contracts are attributed to the sending address.
 
 ### What happens if a wallet isn't registered?
-It is exposed to fallback registeration. Script will sync all ethereum public keys in block range. If it can locate a public key belonging to an unregsitered address, it will generate an EOS Public Key from the Ethereum Public Key. The Ethereum Private Key then matches the EOS Public Key.
+It is exposed to fallback registeration. Script will sync all ethereum public keys in block range. If it can locate a public key belonging to an unregsitered address, it will generate an EOS Public Key from the Ethereum Public Key. The Ethereum Private Key should then match the EOS Public Key (NOTE: This is highly experimental, but has been tested to work with high confidence) 
 
 ### What happens to the unregistered supply of tokens?
-The script will attampt to register unregistered users with fallback
+Addresses not exposed to fallback registrations that remain invalid are exported to `snapshot-unregistered.csv` file, which could prove useful. 
 
 ### What is determinstic index?
 Determinstic index is the order of all wallets with respect to when they were seen by either of the contract's (EOSCrowdsale and EOSTokens)
@@ -177,17 +182,45 @@ Determinstic index is the order of all wallets with respect to when they were se
 ### How are account names set?
 Account names the deterministic index encoded to byte32, and then padded with "genesis11111" up to 12 chars. 
 
+### Does the script validate EOS keys?
+Yes
+
+### Why is this using a web3 fork?
+Because of this [unresolved issue](https://github.com/ethereum/web3.js/issues/1610)
+
+### What happens if EOS key does not validate?
+Registration Fallback will attempt to find a public key for the address, and fallback register it. 
+
+### Do I need to agree on block numbers with others for block ranges?
+
+NO! That sounds like a recipe for indeterminism. The script will choose the deterministic end block for final snapshot, it's picks that block by detecting when the tokens were frozen. For ongoing snapshots the block ranges are determined by period, from the first block where the crowdsale had a transaction, to the last block of the defined period. 
 
 ## Troubleshooting
 
-1. Tests are failing
+### Tests are failing
 
 Data is corrupted, try running with `--recalculate_wallets`, if that doesn't work, run without `resume`
 
-2. I got a "module not found error"
+###  I got a "module not found error"
 
 ```
 npm update
+npm install
+```
+
+### I got a "block not found" error
+
+You probably started your Parity node without `--no-warp` (add --no-warp to parity startup), if using geth make sure `syncmode` is set to "full"` is set (`--syncmode "full"`_
+
+
+### I'm seeing a useless error or I public keys don't appear to be syncing
+First, run snapshot with `--verbose_mt`, this will display the stdout of the child processes for public key sync. If there's an error, look into it. Most likely you just need to `npm install`. You can also add `BLUEBIRD_LONG_STACK_TRACES=1` to your snapshot startup like... `BLUEBIRD_LONG_STACK_TRACES=1 node snapshot...`
+
+### I get an error during NPM install related to web3 or lerna
+This is related to the web3 fork mentioned in FAQ. Web3.js team runs lerna before releasing a package, this package is not listed on NPM, so your system will have to run lerna. I'm not doing the package process to keep the forked repo as close to origin as possible.
+```
+npm update
+npm install -g lerna
 npm install
 ```
 
@@ -227,11 +260,14 @@ There are some differences between "ongoing" and "final" snapshots that need to 
 
 - *Ongoing* snapshots will produce accurate output based on period by constraining all blockchain activity to that range. 
    - Block range for each period must be found (determinism) 
+   	- Block range is defined by period, first block of crowdsale to the last block of the defined period. 
 	- Balances are calculated cumulatively, as opposed to `balanceOf()` method provided by  EOSCrowdsale contract
 	- EOS Key Registration is concluded by last registration within the block range. 
--*Final* simplifies a few things. However, it would be recommended that a cutoff block be enforced to encourage network consensus (primarily for registration transactions)
+- *Final* simplifies a few things. 
+	- Block range is defined by the first block of crowdsale (when first transaction occured) to the freeze block
 	- Balances are not calculated but inferred from state returned by `balanceOf()` function provided by Token Contract.
 	- EOS Key Registration is concluded by last registration within the block range. (keys public constant provided by EOSCrowdsale contract is not used) 
+	
 
 ## How It Works
 #### High Level
@@ -275,6 +311,9 @@ Below is the script transposed to plain english.
 	3. Claims
 	4. Registrations
 	5. Reclaimable Transfers
+	6. Resuming: 
+		6. If resume is set, it will only sync data from where it left off
+		7. Otherwise, contract tables will be truncated and it will re-sync everything from scratch. 
 2. Compile list of every address that has ever had an EOS balance, for each address:
 	1. Aggregate relevant txs
 		1. Claims and Buys, required for Unclaimed Balance Calculation
@@ -294,6 +333,9 @@ Below is the script transposed to plain english.
 		4. If all validated, set `valid` to true.
 	5. Process
 		6. Save every wallet regardless of validation or balance to `wallets` table
+        6. Resuming:
+	        7. resume is set and recalculate_wallets is not set, it will only process the above data for addresses with changes since the last sync and adjust block range for wallets accordingly (in the case of buys, it will aggregate based on period not on block range, because future buys are possible)
+		8. resume is not set or recalculate_wallets is set, it will truncate wallets table and process all addresses. 
 1. Registration Fallback
 	1. Query invalid addresses, above minimum snapshot threshold and without register error "exclude" (EOSToken/Crowdsale contracts)
 	2. Attempt to locate public key for each addrses
