@@ -16,8 +16,8 @@ module.exports = {
   overwrite_snapshot: true,
 
   //ETH node Connection Details
-  eth_node_type: '',
-  eth_node_path: '',
+  eth_node_type: 'ipc',
+  eth_node_path: '/root/ipc/jsonrpc.ipc',
 
   //Redis Connection Details
   redis_host: null,

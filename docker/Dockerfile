@@ -17,28 +17,28 @@ RUN apt-get update && \
         mysql-client
 
 # install rustup
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+#RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 # rustup directory
-ENV PATH /root/.cargo/bin:$PATH
+#ENV PATH /root/.cargo/bin:$PATH
 
 # show backtraces
-ENV RUST_BACKTRACE 1
+#ENV RUST_BACKTRACE 1
 
 # show tools
-RUN rustc -vV && \
-cargo -V && \
-gcc -v &&\
-g++ -v
+#RUN rustc -vV && \
+#cargo -V && \
+#gcc -v &&\
+#g++ -v
 
 # build parity
-RUN git clone https://github.com/paritytech/parity.git
-RUN cd parity && \
-        cargo build --release --verbose && \
-        ls /build/parity/target/release/parity && \
-        strip /build/parity/target/release/parity
+#RUN git clone https://github.com/paritytech/parity.git
+#RUN cd parity && \
+#        cargo build --release --verbose && \
+#        ls /build/parity/target/release/parity && \
+#        strip /build/parity/target/release/parity
 
-ENV PATH /build/parity/target/release:$PATH
+#ENV PATH /build/parity/target/release:$PATH
 
 # build genesis
 RUN mkdir genesis
@@ -49,4 +49,4 @@ RUN npm install
 RUN cp docker/config.js .
 
 EXPOSE 8080 8545 8180
-ENTRYPOINT ["/build/genesis/docker/start.sh"]
+#ENTRYPOINT ["node snapshot.js --load_config"]
