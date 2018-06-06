@@ -5,7 +5,7 @@ module.exports = ( state, complete ) => {
 
   state.tests = {}
 
-  console.log(art("level 5","2"))
+  console.log(art("tests","2"))
 
   const passed = (test_results) => {
     let table = new Table('Tests Passed'),
@@ -42,6 +42,7 @@ module.exports = ( state, complete ) => {
   async.waterfall([
     next => next(null, state),
     require('../../tests/total-supply.js'),
+    require('../../tests/liquid-supply.js'),
     require('../../tests/total-daily-buys.js'),
     require('../../tests/negative-balances.js'),
     require('../../tests/validation-balance.js')

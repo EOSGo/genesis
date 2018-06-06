@@ -9,7 +9,7 @@ const changed = (compare_period) => {
 }
 
 const from_date = timestamp  => {
-  return timestamp < CS_START_TIME ? 0 : Math.min(Math.floor((timestamp - CS_START_TIME) / CS_PERIOD_LENGTH_SECONDS ) + 1, CS_MAX_PERIOD_INDEX)
+  return timestamp < CS_START_TIME ? 0 : Math.min(Math.floor((timestamp - CS_START_TIME) / CS_PERIOD_LENGTH_SECONDS ) + 1, CS_NUMBER_OF_PERIODS)
 }
 
 //TODO: Deprecate
@@ -43,8 +43,7 @@ const daily_totals = ( callback ) => {
 }
 
 const expected_supply = (period, include_b1) => {
-  let result = new bn(CS_CREATE_FIRST_PERIOD).div(WAD).plus( new bn(CS_CREATE_PER_PERIOD).div(WAD).times(new bn(period)) )
-  if(include_b1) result.plus(new bn(CS_B1_DISTRIBUTION).div(WAD))
+  let result = new bn(CS_CREATE_FIRST_PERIOD).div(WAD).plus( new bn(CS_CREATE_PER_PERIOD).div(WAD).times(new bn(period)) ).plus(new bn(CS_B1_DISTRIBUTION).div(WAD))
   return result.toFixed(4)
 }
 

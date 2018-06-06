@@ -28,6 +28,8 @@ module.exports = ( state, complete ) => {
   //   return
   // }
 
+  console.log(art("sync contract","2"))
+
   state.sync_contract = {
     buys:0,
     claims:0,
@@ -120,7 +122,8 @@ module.exports = ( state, complete ) => {
               position:     registration.transactionIndex,
               block_number: registration.blockNumber,
               address:      registration.returnValues.user.toLowerCase(),
-              eos_key:      encodeURIComponent(registration.returnValues.key)
+              //encode because some of register function exploits ... fixes a different problem from the web3 fork problem
+              eos_key:      util.misc.sanitize_user_input(registration.returnValues.key)
             }
           })
           state.sync_contract.registrations+=request.length
